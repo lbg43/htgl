@@ -718,9 +718,21 @@
         
         // 配置
         const CONFIG = {
-            API_URL: 'http://localhost:5003/api',  // 修改为api_server.py的端口
-            WORKER_URL: 'http://localhost:5003'    // 用于下载文件的URL
+            API_URL: '',  // 将在下面根据不同情况设置
+            WORKER_URL: '' // 将在下面设置
         };
+        
+        // 获取本地存储的服务器地址
+        const savedServer = localStorage.getItem('apiServer');
+        
+        if (savedServer) {
+            CONFIG.API_URL = `${window.location.protocol}//${savedServer}/api`;
+            CONFIG.WORKER_URL = `${window.location.protocol}//${savedServer}`;
+            console.log('使用已保存的API地址:', CONFIG.API_URL);
+        } else {
+            // 如果没有保存的服务器地址，跳转回登录页进行设置
+            window.location.href = 'index.html';
+        }
         
         // 全局变量
         let currentTab = 'dashboard';
