@@ -134,14 +134,37 @@
     </div>
 
     <script>
-        // 移除硬编码的默认密码
-        // const DEFAULT_USERNAME = 'admin';
-        // const DEFAULT_PASSWORD = 'admin123';
-    
         // 配置API地址
         const CONFIG = {
-            API_URL: 'http://localhost:5003/api'  // 修改为api_server.py的端口
+            API_URL: ''  // 将在下面根据不同情况设置
         };
+        
+        // 从URL参数中获取API地址
+        const urlParams = new URLSearchParams(window.location.search);
+        const serverParam = urlParams.get('server');
+        
+        // 获取本地存储的服务器地址
+        let savedServer = localStorage.getItem('apiServer');
+        
+        // 优先使用URL参数中的服务器地址，其次使用本地存储的地址，最后使用默认地址
+        if (serverParam) {
+            CONFIG.API_URL = `${window.location.protocol}//${serverParam}/api`;
+            localStorage.setItem('apiServer', serverParam);
+        } else if (savedServer) {
+            CONFIG.API_URL = `${window.location.protocol}//${savedServer}/api`;
+        } else {
+            // 提示用户输入服务器地址
+            const serverAddress = prompt('请输入服务器地址(例如：123.456.789.10:5003):', '');
+            if (serverAddress) {
+                CONFIG.API_URL = `${window.location.protocol}//${serverAddress}/api`;
+                localStorage.setItem('apiServer', serverAddress);
+            } else {
+                // 如果用户取消，尝试使用当前域名
+                CONFIG.API_URL = window.location.protocol + '//' + window.location.hostname + ':5003/api';
+            }
+        }
+        
+        console.log('使用API地址:', CONFIG.API_URL);
     
         const loginForm = document.getElementById('loginForm');
         const errorMessage = document.getElementById('errorMessage');
