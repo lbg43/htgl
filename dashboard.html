@@ -1666,6 +1666,50 @@
                 messageElement.style.display = 'block';
             }
         });
+
+        // 加载API设置
+        async function loadAPISettings() {
+            try {
+                console.log('加载API设置...');
+                
+                // 尝试从配置文件获取当前设置
+                try {
+                    const configData = await makeRequest('getAPISettings');
+                    if (configData && configData.success) {
+                        // 填充表单
+                        if (configData.apiId) document.getElementById('api-id').value = configData.apiId;
+                        if (configData.apiHash) document.getElementById('api-hash').value = configData.apiHash;
+                        if (configData.botToken) document.getElementById('bot-token').value = configData.botToken;
+                        if (configData.verificationTimeout) document.getElementById('verification-timeout').value = configData.verificationTimeout;
+                        if (configData.enable2fa !== undefined) document.getElementById('enable-2fa').checked = configData.enable2fa;
+                        
+                        console.log('API设置已加载');
+                    }
+                } catch (configError) {
+                    console.warn('无法获取API设置:', configError);
+                    // 继续使用现有数据
+                }
+                
+                // 绑定保存按钮事件(如果未绑定)
+                const alreadyBound = document.getElementById('api-settings-bound');
+                if (!alreadyBound) {
+                    // 标记为已绑定
+                    const apiIdInput = document.getElementById('api-id');
+                    if (apiIdInput) {
+                        // 找到包含此输入框的卡片
+                        let parentCard = apiIdInput.closest('.card');
+                        if (parentCard) {
+                            parentCard.id = 'api-settings-bound';
+                        }
+                    }
+                    
+                    console.log('API设置加载完成');
+                }
+            } catch (error) {
+                console.error('加载API设置失败:', error);
+                log(`加载API设置失败: ${error.message}`);
+            }
+        }
     </script>
 </body>
 </html>
