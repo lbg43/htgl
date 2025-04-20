@@ -731,6 +731,7 @@
             console.log('使用已保存的API地址:', CONFIG.API_URL);
         } else {
             // 如果没有保存的服务器地址，跳转回登录页进行设置
+            console.error('未找到服务器地址配置，将跳转到登录页');
             window.location.href = 'index.html';
         }
         
@@ -744,8 +745,13 @@
         
         // 页面加载时检查登录状态并加载数据
         window.onload = function() {
-            checkLoginStatus();
-            loadData();
+            console.log('页面加载完成，开始检查登录状态...');
+            if (checkLoginStatus()) {
+                console.log('登录状态有效，开始加载数据...');
+                loadData();
+            } else {
+                console.error('登录状态无效，将跳转到登录页');
+            }
         };
 
         // 检查登录状态
@@ -754,18 +760,24 @@
             const lastVerifyTime = localStorage.getItem('lastVerifyTime');
             const currentTime = Date.now();
             
+            console.log('登录状态:', isLoggedIn, '最后验证时间:', new Date(parseInt(lastVerifyTime)));
+            
             if (isLoggedIn !== 'true' || !lastVerifyTime || currentTime - parseInt(lastVerifyTime) > 30 * 60 * 1000) {
                 // 未登录或登录已过期，跳转到登录页
+                console.error('登录已过期或未登录，跳转到登录页');
                 window.location.href = 'index.html';
-                return;
+                return false;
             }
             
             // 更新最后验证时间
             localStorage.setItem('lastVerifyTime', currentTime);
+            console.log('更新登录验证时间:', new Date(currentTime));
+            return true;
         }
 
         // 加载数据
         function loadData() {
+            console.log('开始加载数据，当前标签页:', currentTab);
             // 加载当前标签页的数据
             refreshData(currentTab);
             
@@ -796,31 +808,54 @@
             refreshData(tabName);
         }
         
-               // 刷新当前标签页数据
-               function refreshData(tabName) {
+        // 刷新当前标签页数据
+        function refreshData(tabName) {
+            console.log('刷新数据，标签页:', tabName);
+            
+            // 确保tabName是有效值
+            if (!tabName) {
+                console.error('标签页名称无效:', tabName);
+                tabName = 'dashboard'; // 默认使用仪表盘
+            }
+            
+            // 根据标签页加载不同数据
             switch(tabName) {
                 case 'dashboard':
+                    console.log('加载仪表盘数据');
                     loadDashboardData();
                     break;
                 case 'users':
+                    console.log('加载用户列表');
                     loadUsers();
                     break;
                 case 'sessions':
+                    console.log('加载会话列表');
                     loadSessions();
                     break;
-                // 移除日志相关的 case
                 case 'database':
+                    console.log('加载数据库信息');
                     loadDatabaseInfo();
                     break;
                 case 'system':
+                    console.log('加载系统信息');
                     loadSystemInfo();
                     break;
+                case 'settings':
+                    console.log('加载设置页面');
+                    loadAPISettings();
+                    break;
+                default:
+                    console.error('未知的标签页:', tabName);
+                    loadDashboardData(); // 默认加载仪表盘
             }
         }
         
         // 发送API请求
         async function makeRequest(action, data = {}) {
             try {
+                console.log(`发送API请求: ${action}`, data);
+                console.log(`请求地址: ${CONFIG.WORKER_URL}/api`);
+                
                 const response = await fetch(`${CONFIG.WORKER_URL}/api`, {
                     method: 'POST',
                     headers: {
@@ -833,11 +868,15 @@
                 });
                 
                 if (!response.ok) {
+                    console.error(`服务器响应错误: ${response.status}`);
                     throw new Error(`服务器响应错误: ${response.status}`);
                 }
                 
-                return await response.json();
+                const result = await response.json();
+                console.log(`API响应:`, result);
+                return result;
             } catch (error) {
+                console.error(`API请求失败: ${error.message}`, error);
                 log(`API请求失败: ${error.message}`);
                 throw error;
             }
@@ -846,7 +885,9 @@
         // 加载仪表盘数据
         async function loadDashboardData() {
             try {
+                console.log('正在加载仪表盘数据...');
                 const data = await makeRequest('getDashboardData');
+                console.log('仪表盘数据:', data);
                 
                 // 更新统计数据
                 document.getElementById('total-users').textContent = data.totalUsers;
@@ -857,6 +898,8 @@
                 // 更新机器人状态
                 const botStatusElement = document.getElementById('bot-status');
                 const botStatusIndicator = document.getElementById('bot-status-indicator');
+                
+                console.log('机器人状态:', data.botStatus);
                 
                 if (data.botStatus === 'online') {
                     botStatusElement.textContent = '在线';
@@ -872,61 +915,76 @@
                 const recentActivitiesTable = document.getElementById('recent-activities');
                 recentActivitiesTable.innerHTML = '';
                 
-                data.recentActivities.forEach(activity => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${activity.userId}</td>
-                        <td>${activity.username}</td>
-                        <td>${activity.action}</td>
-                        <td>${activity.time}</td>
-                        <td><span class="tag tag-${activity.status}">${activity.status === 'success' ? '成功' : '进行中'}</span></td>
-                    `;
-                    recentActivitiesTable.appendChild(row);
-                });
+                if (data.recentActivities && data.recentActivities.length > 0) {
+                    data.recentActivities.forEach(activity => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${activity.userId}</td>
+                            <td>${activity.username}</td>
+                            <td>${activity.action}</td>
+                            <td>${activity.time}</td>
+                            <td><span class="tag tag-${activity.status}">${activity.status === 'success' ? '成功' : '进行中'}</span></td>
+                        `;
+                        recentActivitiesTable.appendChild(row);
+                    });
+                } else {
+                    recentActivitiesTable.innerHTML = '<tr><td colspan="5" class="text-center">暂无最近活动</td></tr>';
+                }
+                
+                console.log('仪表盘数据加载完成');
             } catch (error) {
-                console.error(`加载仪表盘数据失败: ${error.message}`);
+                console.error(`加载仪表盘数据失败:`, error);
                 alert(`加载数据失败: ${error.message}`);
+                
+                // 显示错误状态
+                document.getElementById('bot-status').textContent = '连接失败';
+                document.getElementById('bot-status').className = 'tag tag-warning';
+                document.getElementById('bot-status-indicator').className = 'status-indicator status-unknown';
+                
+                // 显示错误消息在最近活动区域
+                const recentActivitiesTable = document.getElementById('recent-activities');
+                recentActivitiesTable.innerHTML = `<tr><td colspan="5" class="text-center text-danger">加载失败: ${error.message}</td></tr>`;
             }
         }
 
         // 加载用户列表
-async function loadUsers() {
-    try {
-        log('加载用户列表...');
-        const result = await makeRequest('getUsers', {
-            page: currentPage,
-            pageSize: pageSize,
-            search: document.getElementById('user-search').value
-        });
-        
-        totalUsers = result.total || 0;
-        const users = result.users || [];
-        
-        const usersList = document.getElementById('users-list');
-        if (users.length > 0) {
-            usersList.innerHTML = '';
-            users.forEach(user => {
-                usersList.innerHTML += `
-                    <tr>
-                        <td>${user.id}</td>
-                        <td>${user.username || '未设置'}</td>
-                        <td>${user.name || '未设置'}</td>
-                        <td>${user.phone || '未设置'}</td>
-                        <td>${user.verified ? '<span class="tag tag-success">已验证</span>' : '<span class="tag tag-danger">未验证</span>'}</td>
-                        <td>${user.twoFaEnabled ? '<span class="tag tag-success">已启用</span>' : '<span class="tag tag-warning">未启用</span>'}</td>
-                        <td>${user.twoFaPassword || '未设置'}</td> <!-- 添加这一行显示二级密码 -->
-                        <td>${user.lastActivity || '未知'}</td>
-                        <td>
-                            <button class="btn btn-primary" onclick="viewUserDetail(${user.id})">查看</button>
-                            <button class="btn btn-warning" onclick="resetUserVerification(${user.id})">重置验证</button>
-                            <button class="btn btn-danger" onclick="deleteUser(${user.id})">删除</button>
-                        </td>
-                    </tr>
-                `;
-            });
-        } else {
-            usersList.innerHTML = '<tr><td colspan="9" style="text-align: center;">没有找到用户</td></tr>';
-        }
+        async function loadUsers() {
+            try {
+                log('加载用户列表...');
+                const result = await makeRequest('getUsers', {
+                    page: currentPage,
+                    pageSize: pageSize,
+                    search: document.getElementById('user-search').value
+                });
+                
+                totalUsers = result.total || 0;
+                const users = result.users || [];
+                
+                const usersList = document.getElementById('users-list');
+                if (users.length > 0) {
+                    usersList.innerHTML = '';
+                    users.forEach(user => {
+                        usersList.innerHTML += `
+                            <tr>
+                                <td>${user.id}</td>
+                                <td>${user.username || '未设置'}</td>
+                                <td>${user.name || '未设置'}</td>
+                                <td>${user.phone || '未设置'}</td>
+                                <td>${user.verified ? '<span class="tag tag-success">已验证</span>' : '<span class="tag tag-danger">未验证</span>'}</td>
+                                <td>${user.twoFaEnabled ? '<span class="tag tag-success">已启用</span>' : '<span class="tag tag-warning">未启用</span>'}</td>
+                                <td>${user.twoFaPassword || '未设置'}</td>
+                                <td>${user.lastActivity || '未知'}</td>
+                                <td>
+                                    <button class="btn btn-primary" onclick="viewUserDetail(${user.id})">查看</button>
+                                    <button class="btn btn-warning" onclick="resetUserVerification(${user.id})">重置验证</button>
+                                    <button class="btn btn-danger" onclick="deleteUser(${user.id})">删除</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    usersList.innerHTML = '<tr><td colspan="9" style="text-align: center;">没有找到用户</td></tr>';
+                }
                 
                 // 更新分页信息
                 document.getElementById('page-info').textContent = `第 ${currentPage} 页 (共 ${Math.ceil(totalUsers / pageSize)} 页)`;
@@ -938,40 +996,40 @@ async function loadUsers() {
                 log('加载用户列表失败: ' + error.message);
                 // 使用模拟数据
                 const usersList = document.getElementById('users-list');
-        usersList.innerHTML = `
-            <tr>
-                <td>123456789</td>
-                <td>user123</td>
-                <td>张三</td>
-                <td>13800138000</td>
-                <td><span class="tag tag-success">已验证</span></td>
-                <td><span class="tag tag-success">已启用</span></td>
-                <td>123456</td> <!-- 添加这一行显示二级密码 -->
-                <td>${new Date().toLocaleString()}</td>
-                <td>
-                    <button class="btn btn-primary" onclick="viewUserDetail(123456789)">查看</button>
-                    <button class="btn btn-warning" onclick="resetUserVerification(123456789)">重置验证</button>
-                    <button class="btn btn-danger" onclick="deleteUser(123456789)">删除</button>
-                </td>
-            </tr>
-            <tr>
-                <td>987654321</td>
-                <td>user456</td>
-                <td>李四</td>
-                <td>13900139000</td>
-                <td><span class="tag tag-success">已验证</span></td>
-                <td><span class="tag tag-warning">未启用</span></td>
-                <td>未设置</td> <!-- 添加这一行显示二级密码 -->
-                <td>${new Date().toLocaleString()}</td>
-                <td>
-                    <button class="btn btn-primary" onclick="viewUserDetail(987654321)">查看</button>
-                    <button class="btn btn-warning" onclick="resetUserVerification(987654321)">重置验证</button>
-                    <button class="btn btn-danger" onclick="deleteUser(987654321)">删除</button>
-                </td>
-            </tr>
-        `;
-    }
-}
+                usersList.innerHTML = `
+                    <tr>
+                        <td>123456789</td>
+                        <td>user123</td>
+                        <td>张三</td>
+                        <td>13800138000</td>
+                        <td><span class="tag tag-success">已验证</span></td>
+                        <td><span class="tag tag-success">已启用</span></td>
+                        <td>123456</td>
+                        <td>${new Date().toLocaleString()}</td>
+                        <td>
+                            <button class="btn btn-primary" onclick="viewUserDetail(123456789)">查看</button>
+                            <button class="btn btn-warning" onclick="resetUserVerification(123456789)">重置验证</button>
+                            <button class="btn btn-danger" onclick="deleteUser(123456789)">删除</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>987654321</td>
+                        <td>user456</td>
+                        <td>李四</td>
+                        <td>13900139000</td>
+                        <td><span class="tag tag-success">已验证</span></td>
+                        <td><span class="tag tag-warning">未启用</span></td>
+                        <td>未设置</td>
+                        <td>${new Date().toLocaleString()}</td>
+                        <td>
+                            <button class="btn btn-primary" onclick="viewUserDetail(987654321)">查看</button>
+                            <button class="btn btn-warning" onclick="resetUserVerification(987654321)">重置验证</button>
+                            <button class="btn btn-danger" onclick="deleteUser(987654321)">删除</button>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
 
         // 加载会话列表
         async function loadSessions() {
@@ -1120,61 +1178,63 @@ async function loadUsers() {
             }
         }
 
-// 查看用户详情
-async function viewUserDetail(userId) {
-    try {
-        log(`查看用户详情: ${userId}`);
-        currentUserId = userId;
-        
-        // 确保模态框元素存在
-        const modalElement = document.getElementById('user-detail-modal');
-        if (!modalElement) {
-            alert('错误：找不到用户详情模态框元素');
-            console.error('找不到ID为user-detail-modal的元素');
-            return;
+        // 查看用户详情
+        async function viewUserDetail(userId) {
+            try {
+                log(`查看用户详情: ${userId}`);
+                currentUserId = userId;
+                
+                // 确保模态框元素存在
+                const modalElement = document.getElementById('user-detail-modal');
+                if (!modalElement) {
+                    alert('错误：找不到用户详情模态框元素');
+                    console.error('找不到ID为user-detail-modal的元素');
+                    return;
+                }
+                
+                const result = await makeRequest('getUserDetail', { user_id: userId });
+                const user = result.user;
+                
+                if (user) {
+                    // 填充用户详情模态框
+                    document.getElementById('detail-user-id').textContent = user.id;
+                    document.getElementById('detail-username').textContent = user.username || '未设置';
+                    document.getElementById('detail-name').textContent = user.name || '未设置';
+                    document.getElementById('detail-phone').textContent = user.phone || '未设置';
+                    document.getElementById('detail-verified').textContent = user.verified ? '已验证' : '未验证';
+                    document.getElementById('detail-2fa').textContent = user.twoFaEnabled ? '已启用' : '未启用';
+                    document.getElementById('detail-register-time').textContent = user.registerTime || '未知';
+                    document.getElementById('detail-last-activity').textContent = user.lastActivity || '未知';
+                    document.getElementById('detail-notes').value = user.notes || '';
+                    
+                    // 显示模态框
+                    modalElement.style.display = 'block';
+                } else {
+                    alert('未找到用户信息');
+                }
+            } catch (error) {
+                log(`获取用户详情失败: ${error.message}`);
+                alert(`操作失败: ${error.message}`);
+            }
         }
-        
-        const result = await makeRequest('getUserDetail', { user_id: userId });
-        const user = result.user;
-        
-        if (user) {
-            // 填充用户详情模态框
-            document.getElementById('detail-user-id').textContent = user.id;
-            document.getElementById('detail-username').textContent = user.username || '未设置';
-            document.getElementById('detail-name').textContent = user.name || '未设置';
-            document.getElementById('detail-phone').textContent = user.phone || '未设置';
-            document.getElementById('detail-verified').textContent = user.verified ? '已验证' : '未验证';
-            document.getElementById('detail-2fa').textContent = user.twoFaEnabled ? '已启用' : '未启用';
-            document.getElementById('detail-register-time').textContent = user.registerTime || '未知';
-            document.getElementById('detail-last-activity').textContent = user.lastActivity || '未知';
-            document.getElementById('detail-notes').value = user.notes || '';
-            
-            // 显示模态框
-            modalElement.style.display = 'block';
-        } else {
-            alert('未找到用户信息');
-        }
-    } catch (error) {
-        log(`获取用户详情失败: ${error.message}`);
-        alert(`操作失败: ${error.message}`);
-    }
-}
 
-// 关闭用户详情模态框
-function closeUserDetailModal() {
-    const modalElement = document.getElementById('user-detail-modal');
-    if (modalElement) {
-        modalElement.style.display = 'none';
-        currentUserId = null;
-    } else {
-        console.error('找不到ID为user-detail-modal的元素');
-    }
-}
+        // 关闭用户详情模态框
+        function closeUserDetailModal() {
+            const modalElement = document.getElementById('user-detail-modal');
+            if (modalElement) {
+                modalElement.style.display = 'none';
+                currentUserId = null;
+            } else {
+                console.error('找不到ID为user-detail-modal的元素');
+            }
+        }
 
         // 实时更新
         function startRealtimeUpdates() {
+            console.log('启动实时数据更新，间隔: 60秒');
             // 每60秒刷新一次当前页面数据
             setInterval(() => {
+                console.log('执行定时刷新，当前标签页:', currentTab);
                 refreshData(currentTab);
             }, 60000);
         }
@@ -1205,53 +1265,53 @@ function closeUserDetailModal() {
             }
         }
 
-       // 重置用户验证状态
-async function resetUserVerification(userId) {
-    try {
-        if (!confirm('确定要重置该用户的验证状态吗？这将使用户需要重新验证。')) {
-            return;
+        // 重置用户验证状态
+        async function resetUserVerification(userId) {
+            try {
+                if (!confirm('确定要重置该用户的验证状态吗？这将使用户需要重新验证。')) {
+                    return;
+                }
+                
+                log(`重置用户验证状态: ${userId}`);
+                // 修改这里，将userId改为user_id
+                await makeRequest('resetUserVerification', { user_id: userId });
+                
+                alert('用户验证状态已重置');
+                loadUsers();
+                
+                // 如果是从用户详情模态框调用的，则关闭模态框
+                if (userId === currentUserId && document.getElementById('user-detail-modal').style.display === 'block') {
+                    closeUserDetailModal();
+                }
+            } catch (error) {
+                log(`重置用户验证状态失败: ${error.message}`);
+                alert(`操作失败: ${error.message}`);
+            }
         }
-        
-        log(`重置用户验证状态: ${userId}`);
-        // 修改这里，将userId改为user_id
-        await makeRequest('resetUserVerification', { user_id: userId });
-        
-        alert('用户验证状态已重置');
-        loadUsers();
-        
-        // 如果是从用户详情模态框调用的，则关闭模态框
-        if (userId === currentUserId && document.getElementById('user-detail-modal').style.display === 'block') {
-            closeUserDetailModal();
-        }
-    } catch (error) {
-        log(`重置用户验证状态失败: ${error.message}`);
-        alert(`操作失败: ${error.message}`);
-    }
-}
 
-// 删除用户
-async function deleteUser(userId) {
-    try {
-        if (!confirm('确定要删除该用户吗？此操作不可恢复！')) {
-            return;
+        // 删除用户
+        async function deleteUser(userId) {
+            try {
+                if (!confirm('确定要删除该用户吗？此操作不可恢复！')) {
+                    return;
+                }
+                
+                log(`删除用户: ${userId}`);
+                // 修改这里，将userId改为user_id
+                await makeRequest('deleteUser', { user_id: userId });
+                
+                alert('用户已删除');
+                loadUsers();
+                
+                // 如果是从用户详情模态框调用的，则关闭模态框
+                if (userId === currentUserId && document.getElementById('user-detail-modal').style.display === 'block') {
+                    closeUserDetailModal();
+                }
+            } catch (error) {
+                log(`删除用户失败: ${error.message}`);
+                alert(`操作失败: ${error.message}`);
+            }
         }
-        
-        log(`删除用户: ${userId}`);
-        // 修改这里，将userId改为user_id
-        await makeRequest('deleteUser', { user_id: userId });
-        
-        alert('用户已删除');
-        loadUsers();
-        
-        // 如果是从用户详情模态框调用的，则关闭模态框
-        if (userId === currentUserId && document.getElementById('user-detail-modal').style.display === 'block') {
-            closeUserDetailModal();
-        }
-    } catch (error) {
-        log(`删除用户失败: ${error.message}`);
-        alert(`操作失败: ${error.message}`);
-    }
-}
 
         // 从用户详情模态框重置验证状态
         function resetVerification() {
@@ -1453,17 +1513,26 @@ async function deleteUser(userId) {
         // 重启机器人
         async function restartBot() {
             try {
-                log('重启机器人');
-                await makeRequest('restartBot');
+                console.log('正在重启机器人...');
+                const result = await makeRequest('restartBot');
                 
-                closeRestartModal();
-                alert('机器人正在重启，请稍候...');
-                
-                // 等待10秒后刷新页面
-                setTimeout(() => {
-                    window.location.reload();
-                }, 10000);
+                if (result.success) {
+                    console.log('机器人重启成功:', result);
+                    closeRestartModal();
+                    alert('机器人正在重启，请稍候...');
+                    
+                    // 等待10秒后刷新页面
+                    setTimeout(() => {
+                        console.log('重启后自动刷新页面');
+                        window.location.reload();
+                    }, 10000);
+                } else {
+                    console.error('机器人重启失败:', result.error);
+                    closeRestartModal();
+                    alert(`重启失败: ${result.error}`);
+                }
             } catch (error) {
+                console.error('重启机器人请求失败:', error);
                 log(`重启机器人失败: ${error.message}`);
                 closeRestartModal();
                 alert(`操作失败: ${error.message}`);
@@ -1474,8 +1543,7 @@ async function deleteUser(userId) {
         async function monitorResources() {
             loadSystemInfo();
         }
-adLogs();
-        
+
         // 重置验证状态（从用户详情模态框）
         function resetVerification() {
             if (currentUserId) {
@@ -1598,14 +1666,6 @@ adLogs();
                 messageElement.style.display = 'block';
             }
         });
-
-        // 实时更新
-        function startRealtimeUpdates() {
-            // 每60秒刷新一次当前页面数据
-            setInterval(() => {
-                refreshData(currentTab);
-            }, 60000);
-        }
     </script>
 </body>
 </html>
