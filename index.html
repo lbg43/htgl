@@ -148,23 +148,90 @@
         
         // 优先使用URL参数中的服务器地址，其次使用本地存储的地址，最后使用默认地址
         if (serverParam) {
-            CONFIG.API_URL = `${window.location.protocol}//${serverParam}/api`;
+            CONFIG.API_URL = `http://${serverParam}/api`;
             localStorage.setItem('apiServer', serverParam);
+            localStorage.setItem('serverConfigTime', Date.now());
         } else if (savedServer) {
-            CONFIG.API_URL = `${window.location.protocol}//${savedServer}/api`;
+            CONFIG.API_URL = `http://${savedServer}/api`;
+            
+            // 检查上次配置时间，如果超过7天，提示重新配置
+            const configTime = localStorage.getItem('serverConfigTime');
+            if (!configTime || (Date.now() - parseInt(configTime)) > 7 * 24 * 60 * 60 * 1000) {
+                if (confirm('您的服务器配置已超过7天，是否需要更新服务器地址？')) {
+                    // 使用prompt让用户重新输入服务器地址
+                    const newServerAddress = prompt('请输入服务器地址(例如：123.456.789.10:5003):', savedServer);
+                    if (newServerAddress) {
+                        CONFIG.API_URL = `http://${newServerAddress}/api`;
+                        localStorage.setItem('apiServer', newServerAddress);
+                        localStorage.setItem('serverConfigTime', Date.now());
+                        savedServer = newServerAddress;
+                    }
+                } else {
+                    // 更新配置时间
+                    localStorage.setItem('serverConfigTime', Date.now());
+                }
+            }
         } else {
             // 提示用户输入服务器地址
             const serverAddress = prompt('请输入服务器地址(例如：123.456.789.10:5003):', '');
             if (serverAddress) {
-                CONFIG.API_URL = `${window.location.protocol}//${serverAddress}/api`;
+                CONFIG.API_URL = `http://${serverAddress}/api`;
                 localStorage.setItem('apiServer', serverAddress);
+                localStorage.setItem('serverConfigTime', Date.now());
+                savedServer = serverAddress;
             } else {
                 // 如果用户取消，尝试使用当前域名
-                CONFIG.API_URL = window.location.protocol + '//' + window.location.hostname + ':5003/api';
+                CONFIG.API_URL = 'http://' + window.location.hostname + ':5003/api';
             }
         }
         
         console.log('使用API地址:', CONFIG.API_URL);
+        
+        // 尝试连接服务器，验证配置是否正确
+        async function testServerConnection() {
+            try {
+                const response = await fetch(`${CONFIG.API_URL}/login`, {
+                    method: 'HEAD',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    // 设置较短的超时时间
+                    signal: AbortSignal.timeout(3000)
+                });
+                
+                if (response.ok) {
+                    console.log('服务器连接成功');
+                    document.getElementById('errorMessage').textContent = '';
+                    document.getElementById('errorMessage').style.display = 'none';
+                    return true;
+                } else {
+                    console.error('服务器连接失败，状态码:', response.status);
+                    document.getElementById('errorMessage').textContent = '服务器连接失败，请检查服务器地址或稍后重试';
+                    document.getElementById('errorMessage').style.display = 'block';
+                    return false;
+                }
+            } catch (error) {
+                console.error('服务器连接异常:', error);
+                document.getElementById('errorMessage').textContent = '无法连接到服务器，请检查服务器地址是否正确，并确保API服务已启动';
+                document.getElementById('errorMessage').style.display = 'block';
+                
+                // 如果连接失败，提示用户重新配置
+                if (savedServer && confirm('无法连接到服务器，是否重新配置服务器地址？')) {
+                    const newServerAddress = prompt('请输入服务器地址(例如：123.456.789.10:5003):', savedServer);
+                    if (newServerAddress) {
+                        CONFIG.API_URL = `http://${newServerAddress}/api`;
+                        localStorage.setItem('apiServer', newServerAddress);
+                        localStorage.setItem('serverConfigTime', Date.now());
+                        // 递归测试新地址
+                        return await testServerConnection();
+                    }
+                }
+                return false;
+            }
+        }
+        
+        // 页面加载后测试服务器连接
+        window.addEventListener('load', testServerConnection);
     
         const loginForm = document.getElementById('loginForm');
         const errorMessage = document.getElementById('errorMessage');
