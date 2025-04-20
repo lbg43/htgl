@@ -726,8 +726,8 @@
         const savedServer = localStorage.getItem('apiServer');
         
         if (savedServer) {
-            CONFIG.API_URL = `${window.location.protocol}//${savedServer}/api`;
-            CONFIG.WORKER_URL = `${window.location.protocol}//${savedServer}`;
+            CONFIG.API_URL = `http://${savedServer}/api`;
+            CONFIG.WORKER_URL = `http://${savedServer}`;
             console.log('使用已保存的API地址:', CONFIG.API_URL);
         } else {
             // 如果没有保存的服务器地址，跳转回登录页进行设置
