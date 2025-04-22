@@ -1317,7 +1317,10 @@
                 await makeRequest('resetUserVerification', { user_id: userId });
                 
                 alert('用户验证状态已重置');
+                
+                // 更彻底地刷新数据 - 不仅刷新用户列表，还刷新仪表盘数据
                 loadUsers();
+                loadDashboardData(); 
                 
                 // 如果是从用户详情模态框调用的，则关闭模态框
                 if (userId === currentUserId && document.getElementById('user-detail-modal').style.display === 'block') {
