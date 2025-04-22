@@ -1280,7 +1280,7 @@
                 
                 log(`保存用户备注: ${currentUserId}`);
                 await makeRequest('saveUserNotes', { 
-                    userId: currentUserId, 
+                    user_id: currentUserId,  // 将userId改为user_id
                     notes: notes 
                 });
                 
@@ -1364,7 +1364,7 @@
                 }
                 
                 log(`终止会话: ${userId}`);
-                await makeRequest('terminateSession', { userId });
+                await makeRequest('terminateSession', { user_id: userId });
                 
                 alert('会话已终止');
                 loadSessions();
