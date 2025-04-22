@@ -1313,7 +1313,6 @@
                 }
                 
                 log(`重置用户验证状态: ${userId}`);
-                // 修改这里，将userId改为user_id
                 await makeRequest('resetUserVerification', { user_id: userId });
                 
                 alert('用户验证状态已重置');
@@ -1340,11 +1339,11 @@
                 }
                 
                 log(`删除用户: ${userId}`);
-                // 修改这里，将userId改为user_id
                 await makeRequest('deleteUser', { user_id: userId });
                 
                 alert('用户已删除');
                 loadUsers();
+                loadDashboardData(); // 添加这行以刷新仪表盘数据
                 
                 // 如果是从用户详情模态框调用的，则关闭模态框
                 if (userId === currentUserId && document.getElementById('user-detail-modal').style.display === 'block') {
