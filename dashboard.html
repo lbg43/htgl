@@ -27,6 +27,16 @@
             z-index: 100;
         }
 
+        .sidebar-title {
+            padding: 0 20px 20px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            text-align: center;
+            border-bottom: 1px solid #4a5c60;
+            margin-bottom: 10px;
+        }
+
         .menu-item {
             padding: 15px 20px;
             cursor: pointer;
@@ -363,6 +373,7 @@
 <body>
     <!-- 左侧菜单 -->
     <div class="sidebar">
+        <div class="sidebar-title">Telegram验证机器人后台管理系统</div>
         <div class="menu-item active" onclick="switchTab('dashboard')">
             <i class="fas fa-tachometer-alt"></i> <span>仪表盘</span>
         </div>
@@ -391,7 +402,7 @@
 
     <!-- 顶部导航栏 -->
     <div class="top-nav">
-        <h2>Telegram验证机器人后台管理系统</h2>
+        <div></div>
         <div class="user-info">
             <div class="user-avatar">A</div>
             <span>管理员</span>
