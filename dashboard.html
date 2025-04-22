@@ -172,6 +172,21 @@
             color: #2d3436;
         }
 
+        /* 添加系统卡片样式 */
+        .system-card {
+            background-color: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-top: 20px;
+            padding: 20px;
+        }
+
+        .button-group {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
         /* 表单样式 */
         .form-group {
             margin-bottom: 15px;
@@ -392,10 +407,13 @@
             <!-- 机器人状态 -->
             <div class="card">
                 <h3 class="card-title">机器人状态</h3>
-                <div>
-                    <span class="status-indicator status-online" id="bot-status-indicator"></span>
-                    <span id="bot-status">加载中...</span>
-                    <button class="btn btn-primary" style="float: right;" onclick="confirmRestart()">重启机器人</button>
+                <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                    <span class="status-indicator" id="bot-status-indicator"></span>
+                    <span id="bot-status" class="tag">加载中...</span>
+                </div>
+                <div class="dashboard-actions" style="text-align: right; margin-top: 10px;">
+                    <button class="btn btn-warning" onclick="confirmRestart()">重启机器人</button>
+                    <button class="btn btn-danger" onclick="confirmShutdown()">关闭机器人</button>
                 </div>
             </div>
             
@@ -614,6 +632,15 @@
             </div>
             
             <button class="btn btn-primary" onclick="monitorResources()">刷新资源信息</button>
+
+            <div class="system-card">
+                <h3 class="card-title">机器人控制</h3>
+                <p>管理机器人状态和运行</p>
+                <div class="button-group">
+                    <button class="btn btn-warning" onclick="confirmRestart()">重启机器人</button>
+                    <button class="btn btn-danger" onclick="confirmShutdown()">关闭机器人</button>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -646,16 +673,15 @@
     </div>
 </div>
     
-    <!-- 重启确认模态框 -->
+    <!-- 重启机器人确认模态框 -->
     <div id="restart-modal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">确认重启</h3>
-                <button class="close-btn" onclick="closeRestartModal()">&times;</button>
+            <h3>确认重启机器人</h3>
+            <p>您确定要重启机器人吗？正在进行中的验证将会中断。</p>
+            <div class="button-group">
+                <button class="btn btn-danger" onclick="restartBot()">确认重启</button>
+                <button class="btn btn-default" onclick="closeRestartModal()">取消</button>
             </div>
-            <p>确定要重启机器人吗？这将断开所有当前会话。</p>
-            <button class="btn btn-danger" onclick="restartBot()">确认重启</button>
-            <button class="btn btn-primary" onclick="closeRestartModal()">取消</button>
         </div>
     </div>
 
@@ -682,6 +708,18 @@
                 <button type="submit" class="btn btn-primary">修改密码</button>
                 <button type="button" class="btn btn-secondary" onclick="closeChangePasswordModal()">取消</button>
             </form>
+        </div>
+    </div>
+
+    <!-- 关闭机器人确认模态框 -->
+    <div id="shutdown-modal" class="modal">
+        <div class="modal-content">
+            <h3>确认关闭机器人</h3>
+            <p>您确定要关闭机器人吗？所有正在进行中的验证将会中断，机器人将停止运行。</p>
+            <div class="button-group">
+                <button class="btn btn-danger" onclick="shutdownBot()">确认关闭</button>
+                <button class="btn btn-default" onclick="closeShutdownModal()">取消</button>
+            </div>
         </div>
     </div>
 
@@ -1708,6 +1746,45 @@
             } catch (error) {
                 console.error('加载API设置失败:', error);
                 log(`加载API设置失败: ${error.message}`);
+            }
+        }
+
+        // 确认关闭机器人
+        function confirmShutdown() {
+            document.getElementById('shutdown-modal').style.display = 'block';
+        }
+
+        // 关闭关闭机器人模态框
+        function closeShutdownModal() {
+            document.getElementById('shutdown-modal').style.display = 'none';
+        }
+
+        // 关闭机器人
+        async function shutdownBot() {
+            try {
+                console.log('正在关闭机器人...');
+                const result = await makeRequest('shutdownBot');
+                
+                if (result.success) {
+                    console.log('机器人关闭成功:', result);
+                    closeShutdownModal();
+                    alert('机器人已成功关闭: ' + result.message);
+                    
+                    // 等待3秒后刷新页面
+                    setTimeout(() => {
+                        console.log('关闭后自动刷新页面');
+                        loadDashboardData(); // 刷新仪表盘数据以更新机器人状态
+                    }, 3000);
+                } else {
+                    console.error('机器人关闭失败:', result.error);
+                    closeShutdownModal();
+                    alert(`关闭失败: ${result.error}`);
+                }
+            } catch (error) {
+                console.error('关闭机器人请求失败:', error);
+                log(`关闭机器人失败: ${error.message}`);
+                closeShutdownModal();
+                alert(`操作失败: ${error.message}`);
             }
         }
     </script>
